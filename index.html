@@ -128,16 +128,10 @@
     </div>
     
     <script>
-        // Debug Image Loading
+        // Error handling for image
         const imgEl = document.getElementById('reveal-image');
-        imgEl.onload = () => console.log("✅ Image Loaded Successfully:", imgEl.src);
-        imgEl.onerror = (e) => console.log("❌ Image Load Failed:", imgEl.src);
-
-        // Robust error handling
         imgEl.addEventListener('error', function(e) {
-            // If fallback to JPEG also fails (or if we want to show text immediately)
-            if(this.src.includes('jpeg')) { // Try showing error if jpeg also fails
-                 console.log("❌ Both WebP and JPEG failed.");
+            if(this.src.includes('jpeg')) {
                  this.style.display='none';
                  document.getElementById('error-message').style.display='block';
             }
@@ -165,7 +159,8 @@
             gesture: 'idle', // idle, fist, open, point1, point2
             targetPoints: [],
             isHandDetected: false,
-            time: 0
+            time: 0,
+            revealStartTime: 0  // Track when face_reveal started for animation
         };
 
         // --- THREE.JS SETUP ---
@@ -402,13 +397,32 @@
                         let wobbleX = Math.sin(time * 2 + i) * 0.05;
                         let wobbleY = Math.cos(time * 1.5 + i) * 0.05;
 
-                        // Special handling for Vortex - make it spin!
+                        // Special handling for Vortex - DRAMATIC EXPAND EFFECT!
                         if (state.gesture === 'face_reveal') {
-                             const angle = Math.atan2(pt.y, pt.x) + time * 1.0; // Spin speed
-                             const r = Math.hypot(pt.x, pt.y);
-                             targetPositions[i*3] = Math.cos(angle) * r;
-                             targetPositions[i*3+1] = Math.sin(angle) * r;
-                             targetPositions[i*3+2] = pt.z + Math.sin(time * 2 + i) * 10;
+                             // Calculate reveal progress (0 to 1 over 1.5 seconds)
+                             const revealDuration = 1.5;
+                             const elapsed = state.time - state.revealStartTime;
+                             const progress = Math.min(elapsed / revealDuration, 1);
+                             
+                             // Easing function for smooth expand
+                             const easeOut = 1 - Math.pow(1 - progress, 3);
+                             
+                             // Base angle with spin
+                             const baseAngle = Math.atan2(pt.y, pt.x);
+                             const spinSpeed = 2.0 - progress * 1.5; // Slow down as it expands
+                             const angle = baseAngle + time * spinSpeed;
+                             
+                             // Start tight (radius 20), expand to full (radius from shape)
+                             const startRadius = 20;
+                             const endRadius = Math.hypot(pt.x, pt.y);
+                             const r = startRadius + (endRadius - startRadius) * easeOut;
+                             
+                             // Add sparkle effect
+                             const sparkle = Math.sin(time * 8 + i * 0.5) * (1 - progress) * 15;
+                             
+                             targetPositions[i*3] = Math.cos(angle) * (r + sparkle);
+                             targetPositions[i*3+1] = Math.sin(angle) * (r + sparkle);
+                             targetPositions[i*3+2] = pt.z + Math.sin(time * 3 + i) * 20 * (1 - progress);
                              continue;
                         }
 
@@ -523,11 +537,14 @@
                         const hand2Fingers = detectGesture(results.multiHandLandmarks[1]);
                         
                         if (hand1Fingers === 'point2' && hand2Fingers === 'point2') {
+                            // Start reveal animation timer if not already revealing
+                            if (state.gesture !== 'face_reveal') {
+                                state.revealStartTime = state.time;
+                            }
                             state.gesture = 'face_reveal';
                             statusText.innerText = "FACE REVEAL ✨";
-                            console.log("👆 Two peace gestures detected! Showing photo...");
                             revealContainer.classList.add('visible');
-                            return; // Still return early but AFTER showing photo
+                            return;
                         }
                     }
 
@@ -577,12 +594,10 @@
                 // TOGGLE PHOTO REVEAL
                 if (state.gesture === 'face_reveal') {
                     if (!revealContainer.classList.contains('visible')) {
-                        console.log("✨ Activating Face Reveal! Image visible.");
                         revealContainer.classList.add('visible');
                     }
                 } else {
                     if (revealContainer.classList.contains('visible')) {
-                        console.log("🔒 Deactivating Face Reveal.");
                         revealContainer.classList.remove('visible');
                     }
                 }
@@ -594,7 +609,6 @@
                 statusText.innerText = "Mencari Tangan...";
                 if(revealContainer && revealContainer.classList.contains('visible')) {
                      revealContainer.classList.remove('visible');
-                     console.log("🔒 Hands lost, hiding image.");
                 }
             }
         }
