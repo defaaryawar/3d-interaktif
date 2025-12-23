@@ -43,6 +43,40 @@
         
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* IMAGE REVEAL CONTAINER */
+        #reveal-container {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px; height: 300px;
+            border-radius: 20px;
+            overflow: hidden;
+            opacity: 0;
+            visibility: hidden; /* Prevent interference when hidden */
+            transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+            z-index: 9999; /* FORCE TOP LAYER */
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.5);
+            border: 4px solid #fff; /* Thicker border for debugging */
+            pointer-events: none;
+        }
+
+        #reveal-image {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            transform: scale(0.8);
+            transition: transform 0.8s ease-out;
+        }
+
+        #reveal-container.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        
+        #reveal-container.visible #reveal-image {
+            transform: scale(1);
+        }
+
         .status-container {
             position: fixed;
             bottom: 20px;
@@ -83,6 +117,32 @@
         <div id="status-dot"></div>
         <div id="status-text">Mencari Tangan...</div>
     </div>
+
+    <!-- PHOTO CONTAINER -->
+    <div id="reveal-container">
+        <!-- User requested WEBP for performance. Path /us.webp resolves to public/us.webp in Vite -->
+        <img id="reveal-image" src="/us.webp" alt="Us" onerror="this.onerror=null; this.src='/us.jpeg'; console.log('WebP not found, trying JPEG');" />
+        <div id="error-message" style="display:none; color:white; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center;">
+            FILE us.webp TIDAK DITEMUKAN<br>DI FOLDER PUBLIC
+        </div>
+    </div>
+    
+    <script>
+        // Debug Image Loading
+        const imgEl = document.getElementById('reveal-image');
+        imgEl.onload = () => console.log("✅ Image Loaded Successfully:", imgEl.src);
+        imgEl.onerror = (e) => console.log("❌ Image Load Failed:", imgEl.src);
+
+        // Robust error handling
+        imgEl.addEventListener('error', function(e) {
+            // If fallback to JPEG also fails (or if we want to show text immediately)
+            if(this.src.includes('jpeg')) { // Try showing error if jpeg also fails
+                 console.log("❌ Both WebP and JPEG failed.");
+                 this.style.display='none';
+                 document.getElementById('error-message').style.display='block';
+            }
+        });
+    </script>
 
     <div id="canvas-container"></div>
     <video id="input-video"></video>
@@ -238,34 +298,58 @@
             return points;
         }
 
+        function createVortex() {
+            const points = [];
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                // Create a ring/tunnel effect around the image (radius ~180-250)
+                const angle = (i / PARTICLE_COUNT) * Math.PI * 2 * 10; // Multiple windings
+                const r = 160 + Math.random() * 100; // Radius outside the image container
+                points.push({
+                    x: Math.cos(angle) * r,
+                    y: Math.sin(angle) * r,
+                    z: (Math.random() - 0.5) * 50
+                });
+            }
+            return points;
+        }
+
         // Precompute shapes
         const shapes = {
             sphere: [], 
             fist: [], 
+            vortex: createVortex(),
             hello: createTextPoints(['HELLO'], 350),
             name: createTextPoints(['NAJMITA', 'ZAHIRA', 'DIRGANTORO'], 150), // Increased font size for better density
             love: createTextPoints(['I LOVE YOUUU', 'SOOO MUCHH <3'], 180),
-            specialLove: createTextPoints(['FOR YOU', 'BEAUTIFUL WOMAN', 'NAJMITA ZAHIRA'], 130)
+            specialLove: createTextPoints(['FOR YOU', 'BEAUTIFUL WOMAN', 'NAJMITA ZAHIRA'], 130),
+            missing: createTextPoints(['MASUKKAN FILE', 'us.jpeg', 'KE FOLDER'], 100)
         };
 
         function updateTargetPositions() {
             const time = state.time;
             
-            // Mode: IDLE (Slow floating cloud/sphere)
+            // Mode: IDLE (Nebula Flow - Magis & Natural)
             if (state.gesture === 'idle') {
-                const radius = 30; // Bigger idle sphere
                 for (let i = 0; i < PARTICLE_COUNT; i++) {
-                    const u = randomOffsets[i*3];
-                    const v = randomOffsets[i*3+1];
-                    const theta = 2 * Math.PI * u;
-                    const phi = Math.acos(2 * v - 1);
-                    
-                    // Breathing sphere
-                    const r = radius + Math.sin(time * 0.5 + u * 10) * 5;
-                    
-                    targetPositions[i*3] = r * Math.sin(phi) * Math.cos(theta);
-                    targetPositions[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
-                    targetPositions[i*3+2] = r * Math.cos(phi);
+                     // 3D Flow Field / Noise simulation
+                     const u = randomOffsets[i*3];
+                     const v = randomOffsets[i*3+1];
+                     const w = randomOffsets[i*3+2];
+                     
+                     // Large slow flow
+                     const flowX = Math.sin(time * 0.3 + v * 10) * 30;
+                     const flowY = Math.cos(time * 0.2 + u * 10) * 20;
+                     const flowZ = Math.sin(time * 0.4 + w * 10) * 30;
+                     
+                     // Lissajous orbit for structure
+                     const orbitX = Math.sin(time * 0.5 + u * Math.PI * 2) * 50;
+                     const orbitY = Math.cos(time * 0.3 + v * Math.PI * 2) * 20;
+                     const orbitZ = Math.cos(time * 0.4 + w * Math.PI * 2) * 50;
+                     
+                     // Combine for "Nebula" look
+                     targetPositions[i*3] = flowX + orbitX * 0.5;
+                     targetPositions[i*3+1] = flowY + orbitY * 0.5;
+                     targetPositions[i*3+2] = flowZ + orbitZ * 0.5;
                 }
             }
             // Mode: FIST (Implosion / Black Hole)
@@ -296,11 +380,15 @@
                 }
             }
             // Mode: TEXT
-            else if (['point1', 'point2', 'point3', 'double_love'].includes(state.gesture)) {
+            else if (['point1', 'point2', 'point3', 'double_love', 'face_reveal'].includes(state.gesture)) {
                 let shape = shapes.hello;
                 if (state.gesture === 'point2') shape = shapes.name;
                 if (state.gesture === 'point3') shape = shapes.love;
                 if (state.gesture === 'double_love') shape = shapes.specialLove;
+                
+                if (state.gesture === 'face_reveal') {
+                    shape = shapes.vortex;
+                }
 
                 const len = shape.length;
                 
@@ -311,17 +399,27 @@
                         
                         // Add organic subtle movement so text isn't dead static
                         // Reduced wobble for sharper text
-                        const wobbleX = Math.sin(time * 2 + i) * 0.05;
-                        const wobbleY = Math.cos(time * 1.5 + i) * 0.05;
+                        let wobbleX = Math.sin(time * 2 + i) * 0.05;
+                        let wobbleY = Math.cos(time * 1.5 + i) * 0.05;
+
+                        // Special handling for Vortex - make it spin!
+                        if (state.gesture === 'face_reveal') {
+                             const angle = Math.atan2(pt.y, pt.x) + time * 1.0; // Spin speed
+                             const r = Math.hypot(pt.x, pt.y);
+                             targetPositions[i*3] = Math.cos(angle) * r;
+                             targetPositions[i*3+1] = Math.sin(angle) * r;
+                             targetPositions[i*3+2] = pt.z + Math.sin(time * 2 + i) * 10;
+                             continue;
+                        }
 
                         targetPositions[i*3] = pt.x + wobbleX;
                         targetPositions[i*3+1] = pt.y + wobbleY;
                         
-                         // If we have EXCESS particles, hide them far away
+                        // If we have EXCESS particles, hide them far away
                         if (i >= len) {
-                             targetPositions[i*3] = (Math.random() - 0.5) * 500; // Scatter wide
+                             targetPositions[i*3] = (Math.random() - 0.5) * 500; 
                              targetPositions[i*3+1] = (Math.random() - 0.5) * 500;
-                             targetPositions[i*3+2] = -500; // Push VERY far back
+                             targetPositions[i*3+2] = -500; 
                         } else {
                              targetPositions[i*3+2] = pt.z;
                         }
@@ -413,12 +511,27 @@
         function onResults(results) {
             const statusText = document.getElementById('status-text');
             const statusDot = document.getElementById('status-dot');
+            const revealContainer = document.getElementById('reveal-container');
 
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 state.isHandDetected = true;
                 statusDot.classList.add('active');
 
-                // Check for TWO-HAND LOVE GESTURE (TikTok trend)
+                    // Check for TWO-HAND "PEACE" GESTURE (2 Fingers on each hand) -> Face Reveal
+                    if (results.multiHandLandmarks.length === 2) {
+                        const hand1Fingers = detectGesture(results.multiHandLandmarks[0]);
+                        const hand2Fingers = detectGesture(results.multiHandLandmarks[1]);
+                        
+                        if (hand1Fingers === 'point2' && hand2Fingers === 'point2') {
+                            state.gesture = 'face_reveal';
+                            statusText.innerText = "FACE REVEAL ✨";
+                            console.log("👆 Two peace gestures detected! Showing photo...");
+                            revealContainer.classList.add('visible');
+                            return; // Still return early but AFTER showing photo
+                        }
+                    }
+
+                    // Check for TWO-HAND LOVE GESTURE (TikTok trend)
                 if (results.multiHandLandmarks.length === 2) {
                     const hand1 = results.multiHandLandmarks[0];
                     const hand2 = results.multiHandLandmarks[1];
@@ -456,15 +569,33 @@
                     case 'point2': label = "2 Jari: NAJMITA..."; break;
                     case 'point3': label = "3 Jari: LOVE YOU..."; break;
                     case 'double_love': label = "LOVEEE!!!"; break;
+                    case 'face_reveal': label = "MUKA KITA ✨"; break;
                     default: label = "Gerakkan Tangan...";
                 }
                 statusText.innerText = label;
+
+                // TOGGLE PHOTO REVEAL
+                if (state.gesture === 'face_reveal') {
+                    if (!revealContainer.classList.contains('visible')) {
+                        console.log("✨ Activating Face Reveal! Image visible.");
+                        revealContainer.classList.add('visible');
+                    }
+                } else {
+                    if (revealContainer.classList.contains('visible')) {
+                        console.log("🔒 Deactivating Face Reveal.");
+                        revealContainer.classList.remove('visible');
+                    }
+                }
 
             } else {
                 state.isHandDetected = false;
                 state.gesture = 'idle';
                 statusDot.classList.remove('active');
                 statusText.innerText = "Mencari Tangan...";
+                if(revealContainer && revealContainer.classList.contains('visible')) {
+                     revealContainer.classList.remove('visible');
+                     console.log("🔒 Hands lost, hiding image.");
+                }
             }
         }
 
