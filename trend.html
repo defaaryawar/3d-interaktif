@@ -42,6 +42,33 @@
         }
         
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        .status-container {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0,0,0,0.5);
+            padding: 8px 16px;
+            border-radius: 20px;
+            z-index: 50;
+        }
+        
+        #status-dot {
+            width: 10px;
+            height: 10px;
+            background-color: red;
+            border-radius: 50%;
+            transition: background-color 0.3s;
+        }
+        
+        #status-dot.active {
+            background-color: #00ff00;
+            box-shadow: 0 0 10px #00ff00;
+        }
     </style>
 </head>
 <body>
@@ -52,7 +79,10 @@
         <div style="font-size: 11px; color:#666; margin-top:8px">Izinkan akses kamera untuk memulai</div>
     </div>
 
-
+    <div class="status-container">
+        <div id="status-dot"></div>
+        <div id="status-text">Mencari Tangan...</div>
+    </div>
 
     <div id="canvas-container"></div>
     <video id="input-video"></video>
@@ -65,10 +95,10 @@
 
     <script>
         // --- CONFIGURATION ---
-        const PARTICLE_COUNT = 20000; // Increased even more for maximum density
-        const PARTICLE_SIZE = 0.5; // Slightly larger for clarity
-        const TEXT_SAMPLE_DENSITY = 3; // Lower = tighter sampling = sharper text
-        const LERP_SPEED = 0.035; // Very slow and smooth transition
+        const PARTICLE_COUNT = 20000;
+        const PARTICLE_SIZE = 0.5;
+        const TEXT_SAMPLE_DENSITY = 3;
+        const LERP_SPEED = 0.022; // Ultra smooth transitions
         
         // --- STATE ---
         const state = {
@@ -210,11 +240,12 @@
 
         // Precompute shapes
         const shapes = {
-            sphere: [], // Dynamic
-            fist: [],   // Dynamic implosion
+            sphere: [], 
+            fist: [], 
             hello: createTextPoints(['HELLO'], 350),
-            name: createTextPoints(['NAJMITA', 'ZAHIRA', 'DIRGANTORO'], 160),
-            love: createTextPoints(['I LOVE YOUUU', 'SOOO MUCHH <3'], 180)
+            name: createTextPoints(['NAJMITA', 'ZAHIRA', 'DIRGANTORO'], 150), // Increased font size for better density
+            love: createTextPoints(['I LOVE YOUUU', 'SOOO MUCHH <3'], 180),
+            specialLove: createTextPoints(['FOR YOU', 'BEAUTIFUL WOMAN', 'NAJMITA ZAHIRA'], 130)
         };
 
         function updateTargetPositions() {
@@ -264,11 +295,12 @@
                     targetPositions[i*3+2] = (randomOffsets[i*3+2] - 0.5) * 10; // Some thickness
                 }
             }
-            // Mode: TEXT (Hello / Name / Love)
-            else if (state.gesture === 'point1' || state.gesture === 'point2' || state.gesture === 'point3') {
+            // Mode: TEXT
+            else if (['point1', 'point2', 'point3', 'double_love'].includes(state.gesture)) {
                 let shape = shapes.hello;
                 if (state.gesture === 'point2') shape = shapes.name;
                 if (state.gesture === 'point3') shape = shapes.love;
+                if (state.gesture === 'double_love') shape = shapes.specialLove;
 
                 const len = shape.length;
                 
@@ -278,15 +310,18 @@
                         const pt = shape[i % len];
                         
                         // Add organic subtle movement so text isn't dead static
-                        const wobbleX = Math.sin(time * 2 + i) * 0.2;
-                        const wobbleY = Math.cos(time * 1.5 + i) * 0.2;
+                        // Reduced wobble for sharper text
+                        const wobbleX = Math.sin(time * 2 + i) * 0.05;
+                        const wobbleY = Math.cos(time * 1.5 + i) * 0.05;
 
                         targetPositions[i*3] = pt.x + wobbleX;
                         targetPositions[i*3+1] = pt.y + wobbleY;
                         
-                         // If we have EXCESS particles, make them float in background
+                         // If we have EXCESS particles, hide them far away
                         if (i >= len) {
-                             targetPositions[i*3+2] = (Math.random() - 0.5) * 50 - 20; // Push back
+                             targetPositions[i*3] = (Math.random() - 0.5) * 500; // Scatter wide
+                             targetPositions[i*3+1] = (Math.random() - 0.5) * 500;
+                             targetPositions[i*3+2] = -500; // Push VERY far back
                         } else {
                              targetPositions[i*3+2] = pt.z;
                         }
@@ -383,12 +418,33 @@
                 state.isHandDetected = true;
                 statusDot.classList.add('active');
 
+                // Check for TWO-HAND LOVE GESTURE (TikTok trend)
+                if (results.multiHandLandmarks.length === 2) {
+                    const hand1 = results.multiHandLandmarks[0];
+                    const hand2 = results.multiHandLandmarks[1];
+                    
+                    // Check if thumbs and index fingers are close (forming heart shape)
+                    // Thumb tip = landmark 4, Index tip = landmark 8
+                    const thumb1 = hand1[4];
+                    const thumb2 = hand2[4];
+                    const index1 = hand1[8];
+                    const index2 = hand2[8];
+                    
+                    // Calculate distance between fingertips
+                    const thumbDist = Math.hypot(thumb1.x - thumb2.x, thumb1.y - thumb2.y);
+                    const indexDist = Math.hypot(index1.x - index2.x, index1.y - index2.y);
+                    
+                    // If both thumbs and both index fingers are close (heart shape)
+                    if (thumbDist < 0.15 && indexDist < 0.15) {
+                        state.gesture = 'double_love';
+                        statusText.innerText = "LOVE GESTURE ❤️";
+                        return;
+                    }
+                }
+
+                // Single hand gesture detection
                 const landmarks = results.multiHandLandmarks[0];
                 const gesture = detectGesture(landmarks);
-                
-                // Debounce / State holding could be added here if flickering occurs
-                // For now, direct mapping usually feels responsive enough
-                
                 state.gesture = gesture;
 
                 // UI Feedback
@@ -399,6 +455,7 @@
                     case 'point1': label = "1 Jari: HELLO"; break;
                     case 'point2': label = "2 Jari: NAJMITA..."; break;
                     case 'point3': label = "3 Jari: LOVE YOU..."; break;
+                    case 'double_love': label = "LOVEEE!!!"; break;
                     default: label = "Gerakkan Tangan...";
                 }
                 statusText.innerText = label;
@@ -416,7 +473,7 @@
         }});
 
         hands.setOptions({
-            maxNumHands: 1,
+            maxNumHands: 2,
             modelComplexity: 1,
             minDetectionConfidence: 0.6,
             minTrackingConfidence: 0.6
