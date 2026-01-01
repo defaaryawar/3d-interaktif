@@ -3,7 +3,7 @@
 
 export const FINGER_MESSAGES = {
     1: {
-        text: ['HAII SAYANGGG'],
+        text: ['HAII', 'SAYANGGG'],
         fontSize: 180,
         label: '1 Jari: Halo Sayang'
     },
@@ -28,8 +28,8 @@ export const FINGER_MESSAGES = {
         label: '5 Jari: Kamu beda'
     },
     6: {
-        text: ['AKU TAKUT GAGAL', 'TAPI KAMU', 'SELALU HEBAT'],
-        fontSize: 120,
+        text: ['AKU TAKUT GAGAL', 'TAPI KAMU', 'SELALU BERANI', 'DAN KAMU HEBAT'],
+        fontSize: 100,
         label: '6 Jari: Kamu berani'
     },
     7: {

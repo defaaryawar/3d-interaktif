@@ -26,7 +26,16 @@ const camera = new THREE.PerspectiveCamera(
     CAMERA_NEAR,
     CAMERA_FAR
 );
-camera.position.z = CAMERA_Z;
+
+// Responsive camera positioning
+import { CAMERA_Z_MOBILE } from './config.js';
+
+function updateCameraPosition() {
+    const isMobile = window.innerWidth < 768;
+    camera.position.z = isMobile ? CAMERA_Z_MOBILE : CAMERA_Z;
+}
+
+updateCameraPosition();
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -230,6 +239,7 @@ window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+    updateCameraPosition();
 });
 
 // Image error handling

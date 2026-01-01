@@ -14,6 +14,7 @@ export const CAMERA_FOV = 60;
 export const CAMERA_NEAR = 0.1;
 export const CAMERA_FAR = 1000;
 export const CAMERA_Z = 60;
+export const CAMERA_Z_MOBILE = 130; // Optimized for mobile text visibility
 
 // MediaPipe Hands settings
 export const HANDS_CONFIG = {

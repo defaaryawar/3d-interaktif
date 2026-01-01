@@ -179,7 +179,7 @@ export function generateShapes() {
         vortex: createVortex(),
         christmasTree: createChristmasTree(),
         photoFrame: createPhotoFrame(),
-        specialLove: createTextPoints(['FOR YOU', 'BEAUTIFUL WOMAN', 'NAJMITA ZAHIRA'], 130),
+        specialLove: createTextPoints(['FOR YOU', 'BEAUTIFUL', 'WOMAN', 'NAJMITA', 'ZAHIRA'], 110),
         missing: createTextPoints(['MASUKKAN FILE', 'us.jpeg', 'KE FOLDER'], 100)
     };
 
