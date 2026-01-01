@@ -75,7 +75,7 @@ function onResults(results) {
 
     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
         state.isHandDetected = true;
-        statusDot.classList.add('active');
+        statusDot?.classList.add('active');
 
         // Collect hand data for gesture detection
         const handData = [];
@@ -96,7 +96,7 @@ function onResults(results) {
                     state.revealStartTime = state.time;
                 }
                 state.gesture = 'face_reveal';
-                statusText.innerText = SPECIAL_GESTURES.face_reveal.label;
+                if (statusText) statusText.innerText = SPECIAL_GESTURES.face_reveal.label;
                 revealContainer.classList.add('visible');
                 return;
             }
@@ -104,7 +104,7 @@ function onResults(results) {
             // Heart shape gesture
             if (isHeartShape(hand1, hand2)) {
                 state.gesture = 'double_love';
-                statusText.innerText = SPECIAL_GESTURES.double_love.label;
+                if (statusText) statusText.innerText = SPECIAL_GESTURES.double_love.label;
                 revealContainer.classList.remove('visible');
                 return;
             }
@@ -115,7 +115,7 @@ function onResults(results) {
             const landmarks = results.multiHandLandmarks[0];
             if (isPinchGesture(landmarks)) {
                 state.gesture = 'pinch';
-                statusText.innerText = '📸 Foto Diambil!';
+                if (statusText) statusText.innerText = '📸 Foto Diambil!';
                 revealContainer.classList.add('visible');
                 return;
             }
@@ -146,13 +146,13 @@ function onResults(results) {
                     state.gesture = mappedGesture;
                     
                     if (mappedGesture === 'fist') {
-                        statusText.innerText = SPECIAL_GESTURES.fist.label;
+                        if (statusText) statusText.innerText = SPECIAL_GESTURES.fist.label;
                     } else if (mappedGesture === 'pinch') {
-                        statusText.innerText = '📸 Foto Diambil!';
+                        if (statusText) statusText.innerText = '📸 Foto Diambil!';
                         revealContainer.classList.add('visible');
                     } else if (mappedGesture.startsWith('finger_')) {
                         const num = parseInt(mappedGesture.split('_')[1]);
-                        statusText.innerText = FINGER_MESSAGES[num]?.label || `${num} Jari`;
+                        if (statusText) statusText.innerText = FINGER_MESSAGES[num]?.label || `${num} Jari`;
                     }
                     return;
                 }
@@ -172,20 +172,20 @@ function onResults(results) {
         // Determine gesture based on finger count
         if (totalFingers === 0) {
             state.gesture = 'fist';
-            statusText.innerText = SPECIAL_GESTURES.fist.label;
+            if (statusText) statusText.innerText = SPECIAL_GESTURES.fist.label;
         } else if (totalFingers >= 1 && totalFingers <= 10) {
             state.gesture = `finger_${totalFingers}`;
-            statusText.innerText = FINGER_MESSAGES[totalFingers]?.label || `${totalFingers} Jari`;
+            if (statusText) statusText.innerText = FINGER_MESSAGES[totalFingers]?.label || `${totalFingers} Jari`;
         } else {
             state.gesture = 'idle';
-            statusText.innerText = SPECIAL_GESTURES.idle.label;
+            if (statusText) statusText.innerText = SPECIAL_GESTURES.idle.label;
         }
 
     } else {
         state.isHandDetected = false;
         state.gesture = 'idle';
-        statusDot.classList.remove('active');
-        statusText.innerText = 'Mencari Tangan...';
+        statusDot?.classList.remove('active');
+        if (statusText) statusText.innerText = 'Mencari Tangan...';
         if (revealContainer && revealContainer.classList.contains('visible')) {
             revealContainer.classList.remove('visible');
         }
